@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(\\(Get-Content c:\\\\Users\\\\gorai\\\\Downloads\\\\v3-php-only__5_\\\\v3-php-only\\\\php\\\\data\\\\trades.csv | Measure-Object -Line\\).Lines)",
+      "PowerShell(php -v)",
+      "PowerShell(composer test)",
+      "PowerShell(cd php; php -r \"require 'vendor/autoload.php'; use CodeScreen\\\\ExcessiveCancellationsChecker; $checker = new ExcessiveCancellationsChecker\\('data/trades.csv'\\); echo 'Excessive companies:' . PHP_EOL; print_r\\($checker->companiesInvolvedInExcessiveCancellations\\(\\)\\); echo 'Well-behaved count: ' . $checker->totalNumberOfWellBehavedCompanies\\(\\) . PHP_EOL;\")",
+      "PowerShell(php \"C:\\\\Users\\\\gorai\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-gorai-Downloads-v3-php-only--5--v3-php-only\\\\def94acd-9719-4aa6-93ee-34a078ec0852\\\\scratchpad\\\\run_checker.php\")",
+      "Bash(choco install *)",
+      "Bash(composer install *)"
+    ]
+  }
+}

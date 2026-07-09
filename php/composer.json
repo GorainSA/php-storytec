@@ -1,0 +1,24 @@
+{
+    "name": "codescreen/excessive-cancellations-checker",
+    "description": "Excessive Trade Cancellations Checker",
+    "type": "project",
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "CodeScreen\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "CodeScreen\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
