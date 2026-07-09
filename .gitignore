@@ -1,4 +1,5 @@
 php/.phpunit.result.cache
+php/vendor/
 CLAUDE.md
 INTERVIEW_PREP.md
 DECISIONS.md
