@@ -89,6 +89,26 @@ life of the object. Covered by `testResultsAreMemoizedAndConsistentRegardlessOfC
 which calls both public methods in an order that would surface any drift if
 they parsed independently.
 
+## 7. Post-review hardening
+
+Following a senior-review pass, three low-risk improvements were made without
+changing observable behavior for any previously-passing test:
+
+- Trade tuples (`array{0:int,1:string,2:int}`) were replaced with a small
+  readonly `TradeEvent` value object (`timestamp`, `type`, `quantity`) to
+  remove magic-index array access.
+- Each company's events are now defensively sorted by timestamp before the
+  sliding window runs, in case the "globally time-ordered file" assumption
+  is ever violated for a single company (previously this would silently
+  corrupt results, since the window pointer only ever moves forward).
+- `fopen()`'s native failure warning is now suppressed with `@`, since the
+  failure is already converted into a `RuntimeException` immediately after;
+  this avoids a spurious PHPUnit warning when testing that path.
+
+The one finding *not* auto-applied is the `$windowEventCount > 1` guard
+(see #3 above) — flipping it changes real output for a real edge case, so
+it was left for an explicit decision rather than changed unilaterally.
+
 ## Note on `ExcessiveCancellationsCheckerTest.php`
 
 This file is explicitly locked (per its own docblock and the project's

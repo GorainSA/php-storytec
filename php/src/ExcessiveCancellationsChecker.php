@@ -62,18 +62,28 @@ class ExcessiveCancellationsChecker
 
         $this->companyExcessiveMap = [];
         foreach ($eventsByCompany as $company => $events) {
+            // Defensive: the README guarantees the file is globally time-ordered,
+            // so each company's events should already be in order. A stable sort
+            // here is cheap insurance against that assumption ever being violated
+            // (e.g. a hand-edited fixture) — it would otherwise silently corrupt
+            // the sliding window, whose pointer only ever moves forward.
+            usort($events, static fn (TradeEvent $a, TradeEvent $b): int => $a->timestamp <=> $b->timestamp);
             $this->companyExcessiveMap[$company] = $this->isExcessiveCancelling($events);
         }
     }
 
     /**
-     * @return array<string, list<array{0: int, 1: string, 2: int}>>
+     * @return array<string, list<TradeEvent>>
      */
     private function parseTradesByCompany(): array
     {
         $eventsByCompany = [];
 
-        $handle = fopen($this->filePath, 'rb');
+        // Suppressed: fopen() emits a PHP-level warning on failure in addition
+        // to returning false. We convert that failure into our own
+        // RuntimeException below, so the native warning would just be noise
+        // (and trips PHPUnit's "risky test" warning detection).
+        $handle = @fopen($this->filePath, 'rb');
         if ($handle === false) {
             throw new \RuntimeException(sprintf('Unable to open trades file: %s', $this->filePath));
         }
@@ -84,13 +94,13 @@ class ExcessiveCancellationsChecker
                 continue;
             }
 
-            $event = $this->parseLine($line);
-            if ($event === null) {
+            $parsed = $this->parseLine($line);
+            if ($parsed === null) {
                 continue;
             }
 
-            [$timestamp, $company, $type, $quantity] = $event;
-            $eventsByCompany[$company][] = [$timestamp, $type, $quantity];
+            [$company, $event] = $parsed;
+            $eventsByCompany[$company][] = $event;
         }
 
         fclose($handle);
@@ -99,7 +109,7 @@ class ExcessiveCancellationsChecker
     }
 
     /**
-     * @return array{0: int, 1: string, 2: string, 3: int}|null
+     * @return array{0: string, 1: TradeEvent}|null
      */
     private function parseLine(string $line): ?array
     {
@@ -127,7 +137,7 @@ class ExcessiveCancellationsChecker
             return null;
         }
 
-        return [$timestamp, $company, $type, (int) $quantityStr];
+        return [$company, new TradeEvent($timestamp, $type, (int) $quantityStr)];
     }
 
     private function parseTimestamp(string $timeStr): ?int
@@ -143,7 +153,7 @@ class ExcessiveCancellationsChecker
     }
 
     /**
-     * @param list<array{0: int, 1: string, 2: int}> $events
+     * @param list<TradeEvent> $events
      */
     private function isExcessiveCancelling(array $events): bool
     {
@@ -153,22 +163,22 @@ class ExcessiveCancellationsChecker
         $count = count($events);
 
         for ($i = 0; $i < $count; $i++) {
-            [$timestamp, $type, $quantity] = $events[$i];
+            $current = $events[$i];
 
-            if ($type === self::ORDER_TYPE_NEW) {
-                $orderQty += $quantity;
+            if ($current->type === self::ORDER_TYPE_NEW) {
+                $orderQty += $current->quantity;
             } else {
-                $cancelQty += $quantity;
+                $cancelQty += $current->quantity;
             }
 
             // Window is (t-60, t], open at the lower bound: an event exactly 60s
             // before the current one has already left the period. See DECISIONS.md #1.
-            while ($events[$windowStart][0] <= $timestamp - self::WINDOW_SECONDS) {
-                [, $expiredType, $expiredQty] = $events[$windowStart];
-                if ($expiredType === self::ORDER_TYPE_NEW) {
-                    $orderQty -= $expiredQty;
+            while ($events[$windowStart]->timestamp <= $current->timestamp - self::WINDOW_SECONDS) {
+                $expired = $events[$windowStart];
+                if ($expired->type === self::ORDER_TYPE_NEW) {
+                    $orderQty -= $expired->quantity;
                 } else {
-                    $cancelQty -= $expiredQty;
+                    $cancelQty -= $expired->quantity;
                 }
                 $windowStart++;
             }

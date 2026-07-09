@@ -166,11 +166,55 @@ class ExcessiveCancellationsCheckerEdgeCasesTest extends TestCase
         $this->assertSame($wellBehavedFirst, $wellBehavedSecond);
     }
 
+    // File-not-found is a distinct failure mode from a malformed line: it
+    // should surface loudly (an exception) rather than silently reporting
+    // zero companies, since it likely indicates a configuration mistake
+    // rather than dirty input data.
+    public function testNonExistentFileThrowsRuntimeException(): void
+    {
+        $checker = new ExcessiveCancellationsChecker($this->fixturePath . '.does-not-exist');
+
+        $this->expectException(\RuntimeException::class);
+
+        $checker->companiesInvolvedInExcessiveCancellations();
+    }
+
+    // An empty file (or one where every line is malformed) is valid input,
+    // not an error: zero companies were observed, so zero are excessive and
+    // zero are well-behaved.
+    public function testEmptyFileYieldsNoCompanies(): void
+    {
+        $this->writeFixture([]);
+
+        $checker = new ExcessiveCancellationsChecker($this->fixturePath);
+
+        $this->assertSame([], $checker->companiesInvolvedInExcessiveCancellations());
+        $this->assertSame(0, $checker->totalNumberOfWellBehavedCompanies());
+    }
+
+    // Documents current (deliberate, not accidental) behavior: company names
+    // are matched by exact string equality, so trailing/leading whitespace
+    // differences are treated as distinct companies rather than being
+    // trimmed and merged. The README does not require normalization, and
+    // silently merging names could mask genuinely distinct entities.
+    public function testCompanyNamesWithDifferingWhitespaceAreTreatedAsDistinct(): void
+    {
+        $this->writeFixture([
+            '2015-01-01 00:00:00,Steady traders,D,200',
+            '2015-01-01 00:00:10,Steady traders ,F,100',
+        ]);
+
+        $checker = new ExcessiveCancellationsChecker($this->fixturePath);
+
+        $this->assertSame([], $checker->companiesInvolvedInExcessiveCancellations());
+        $this->assertSame(2, $checker->totalNumberOfWellBehavedCompanies());
+    }
+
     /**
      * @param string[] $lines
      */
     private function writeFixture(array $lines): void
     {
-        file_put_contents($this->fixturePath, implode("\n", $lines) . "\n");
+        file_put_contents($this->fixturePath, $lines === [] ? '' : implode("\n", $lines) . "\n");
     }
 }
