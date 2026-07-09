@@ -210,6 +210,26 @@ class ExcessiveCancellationsCheckerEdgeCasesTest extends TestCase
         $this->assertSame(2, $checker->totalNumberOfWellBehavedCompanies());
     }
 
+    // Blindspot check: the defensive per-company sort (added during a
+    // hardening pass) had zero test coverage of its own. Here, one
+    // company's lines are deliberately written to the file OUT of
+    // chronological order. Without the sort, the sliding window's
+    // monotonic-pointer assumption breaks and this scenario is wrongly
+    // flagged as excessive; with the sort, it's equivalent to the
+    // "exactly 60 seconds apart" case and correctly not excessive.
+    public function testOutOfOrderLinesForSameCompanyAreSortedBeforeAnalysis(): void
+    {
+        $this->writeFixture([
+            '2015-01-01 00:01:00,Out of order traders,F,200',
+            '2015-01-01 00:00:00,Out of order traders,D,200',
+        ]);
+
+        $checker = new ExcessiveCancellationsChecker($this->fixturePath);
+
+        $this->assertSame([], $checker->companiesInvolvedInExcessiveCancellations());
+        $this->assertSame(1, $checker->totalNumberOfWellBehavedCompanies());
+    }
+
     /**
      * @param string[] $lines
      */

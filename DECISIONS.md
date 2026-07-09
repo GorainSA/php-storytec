@@ -109,6 +109,23 @@ The one finding *not* auto-applied is the `$windowEventCount > 1` guard
 (see #3 above) — flipping it changes real output for a real edge case, so
 it was left for an explicit decision rather than changed unilaterally.
 
+**Blindspot caught in a follow-up review pass:** the defensive per-company
+sort above was added with zero test coverage of its own — it fixed a risk
+in theory but nothing proved it actually worked. Added
+`testOutOfOrderLinesForSameCompanyAreSortedBeforeAnalysis`, which writes one
+company's two lines out of chronological order. Confirmed by temporarily
+reverting the `usort` call: the test fails without it (wrongly reports the
+company as excessive) and passes with it — so the test is verified to
+actually exercise the fix, not just be vacuously true.
+
+**Open philosophical inconsistency, not yet resolved:** a missing file
+throws loudly (`RuntimeException`), but out-of-order timestamps for one
+company are silently auto-corrected via sort rather than throwing or
+logging. Both are "the input violated an assumption," handled two different
+ways. The asymmetry is defensible (one is almost certainly an environment
+mistake; the other is cheap to just fix correctly) but is worth being able
+to justify if asked directly.
+
 ## Note on `ExcessiveCancellationsCheckerTest.php`
 
 This file is explicitly locked (per its own docblock and the project's

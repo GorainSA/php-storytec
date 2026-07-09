@@ -174,6 +174,27 @@ test:
   warning was just noise (and was tripping PHPUnit's risky-test detector
   once I added a test for the missing-file path).
 
+### Q: How do you know the defensive sort actually works?
+It was added without its own test at first — a blindspot caught on a
+follow-up review pass. I added
+`testOutOfOrderLinesForSameCompanyAreSortedBeforeAnalysis` (one company,
+two lines written out of chronological order) and verified it two ways:
+temporarily removed the `usort` call and confirmed the test *fails* (the
+scenario gets wrongly flagged as excessive without sorting), then restored
+it and confirmed the test passes. That's the habit worth mentioning
+unprompted: a fix without a red/green check on it is just a guess.
+
+### Q: Isn't it inconsistent to throw on a missing file but silently
+### auto-correct out-of-order timestamps?
+Fair challenge. Both are "the input violated an assumption I depend on,"
+handled differently: a missing file is treated as an environment/config
+mistake (fail loudly, immediately, cheaply distinguishable from bad data),
+while an out-of-order line for one company is treated as recoverable input
+noise that's cheap to just fix correctly via sort rather than reject
+outright. I'd defend the asymmetry, but I want to be upfront that it *is*
+an asymmetry, not something I'd claim was perfectly principled from day one.
+
+
 ---
 
 ## 5. Anticipated follow-up questions
